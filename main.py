@@ -69,12 +69,13 @@ def run():
             f["company"] = name
             all_data.append(f)
 
-    if all_data:
-        df = pd.DataFrame(all_data)
-        df.to_csv("output.csv", index=False)
-        print("Data saved to output.csv")
-    else:
-        print("No data found")
+    df = pd.DataFrame(all_data)
+
+    if df.empty:
+        print("No data found, creating empty file")
+    
+    df.to_csv("output.csv", index=False)
+    print("output.csv created")
 
 if __name__ == "__main__":
     run()
