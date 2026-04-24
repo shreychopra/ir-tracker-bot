@@ -2,9 +2,24 @@ import requests
 import pandas as pd
 
 companies = {
+    # PRIMARY
+    "ARAPL": "AFFORDABLE",
+    "EFC": "EFCIL",
     "EMS": "EMSLIMITED",
+    "PTC": "PTC",
+    "TAC": "TAC",
     "VSTL": "VSTL",
-    "PTC": "PTC"
+    "VGIL": "VGINFOTECH",
+
+    # SECONDARY
+    "ALPEX": "ALPEXSOLAR",
+    "ASIAN": "ASIANTILES",
+    "DENTA": "DENTA",
+    "DRONACHARYA": "DRONACHARYA",
+    "KESAR": "KESARPE",
+    "MARKOLINES": "MARKOLINES",
+    "SHARAT": "SHINDL",
+    "SKM": "SKM"
 }
 
 def fetch_bse_announcements(scrip):
