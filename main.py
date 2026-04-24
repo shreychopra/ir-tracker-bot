@@ -1,101 +1,80 @@
 import requests
+from bs4 import BeautifulSoup
 import pandas as pd
 
-# Full company mapping
 companies = {
-    # PRIMARY
-    "ARAPL": "AFFORDABLE",
-    "EFC": "EFCIL",
     "EMS": "EMSLIMITED",
-    "PTC": "PTC",
-    "TAC": "TAC",
     "VSTL": "VSTL",
-    "VGIL": "VGINFOTECH",
-
-    # SECONDARY
-    "ALPEX": "ALPEXSOLAR",
-    "ASIAN": "ASIANTILES",
-    "DENTA": "DENTA",
-    "DRONACHARYA": "DRONACHARYA",
-    "KESAR": "KESARPE",
-    "MARKOLINES": "MARKOLINES",
-    "SHARAT": "SHINDL",
-    "SKM": "SKM"
+    "PTC": "PTC"
 }
 
-def fetch_bse_announcements(scrip):
-    url = f"https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w?pageno=1&strCat=Company%20Update&strPrevDate=&strScrip={scrip}&strSearch=P&strToDate=&strType=C"
+def fetch_bse_html(scrip):
+    url = f"https://www.bseindia.com/corporates/ann.html?scode={scrip}"
 
     headers = {
-        "User-Agent": "Mozilla/5.0",
-        "Accept": "application/json"
+        "User-Agent": "Mozilla/5.0"
     }
 
     try:
         res = requests.get(url, headers=headers, timeout=10)
-        print(f"Status for {scrip}: {res.status_code}")
-        return res.json()
+        return res.text
     except Exception as e:
-        print(f"Error fetching {scrip}: {e}")
-        return {}
+        print(f"Error fetching HTML for {scrip}: {e}")
+        return ""
 
-def extract_relevant(data, company):
+def extract_from_html(html, company):
     results = []
 
-    try:
-        table = data.get("Table", [])
-        print(f"{company} → Total announcements fetched: {len(table)}")
+    soup = BeautifulSoup(html, "html.parser")
 
-        for item in table:
-            title = item.get("HEADLINE", "").lower()
+    rows = soup.find_all("tr")
 
-            # Expanded keyword matching
-            if any(keyword in title for keyword in [
-                "analyst",
-                "investor meet",
-                "investor meeting",
-                "conference call",
-                "earnings call"
-            ]):
-                results.append({
-                    "company": company,
-                    "title": item.get("HEADLINE"),
-                    "date": item.get("NEWSSUB"),
-                    "link": item.get("ATTACHMENTNAME")
-                })
+    for row in rows:
+        text = row.get_text().lower()
 
-    except Exception as e:
-        print(f"Error extracting for {company}: {e}")
+        if any(keyword in text for keyword in [
+            "analyst", "investor", "conference call"
+        ]):
+            link_tag = row.find("a")
+            link = ""
 
-    print(f"{company} → Filtered relevant items: {len(results)}")
+            if link_tag and link_tag.get("href"):
+                link = "https://www.bseindia.com" + link_tag.get("href")
+
+            results.append({
+                "company": company,
+                "text": row.get_text(strip=True),
+                "link": link
+            })
+
     return results
 
 def run():
     all_data = []
 
     for name, code in companies.items():
-        print(f"\n🔍 Fetching data for {name}")
+        print(f"\nFetching {name}")
 
-        data = fetch_bse_announcements(code)
+        html = fetch_bse_html(code)
 
-        print(f"Raw data for {name}: {data}")
+        if not html:
+            continue
 
-        filtered = extract_relevant(data, name)
+        extracted = extract_from_html(html, name)
 
-        print(f"Filtered results for {name}: {filtered}")
+        print(f"{name} → Found {len(extracted)} relevant rows")
 
-        all_data.extend(filtered)
+        all_data.extend(extracted)
 
-    # Always create file
     df = pd.DataFrame(all_data)
 
     if df.empty:
-        print("\n⚠️ No relevant data found. Creating empty output.csv")
+        print("No data found")
     else:
-        print("\n✅ Data found. Writing to output.csv")
+        print("Data found")
 
     df.to_csv("output.csv", index=False)
-    print("📁 output.csv created successfully")
+    print("output.csv created")
 
 if __name__ == "__main__":
     run()
